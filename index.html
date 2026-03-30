@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Online Embodiment Adaptation for Quadrupedal Locomotion</title>
+    <meta
+      name="description"
+      content="Online embodiment adaptation for quadrupedal locomotion: infer embodiment from interaction and condition a cross-embodiment policy. IROS 2026."
+    />
+    <meta property="og:title" content="Online Embodiment Adaptation for Quadrupedal Locomotion" />
+    <meta
+      property="og:description"
+      content="Online adaptation module + cross-embodiment quadruped policy. Fast embodiment inference (~0.5s), sim-to-real on Unitree Go2. IROS 2026."
+    />
+    <meta property="og:type" content="website" />
+    <!-- When publishing, set og:url and og:image to absolute URLs, e.g. https://YOUR_USER.github.io/YOUR_REPO/ -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="wrap">
+        <p class="venue">IROS 2026</p>
+        <h1>Online Embodiment Adaptation for Quadrupedal Locomotion</h1>
+        <p class="authors">
+          Dichen Li<sup>1*</sup>, Bo Ai<sup>1*</sup>, Nico Bohlinger<sup>2</sup>, Jan Peters<sup>2,3</sup>,
+          Henrik I. Christensen<sup>1</sup>, Hao Su<sup>1</sup>
+        </p>
+        <p class="affil">
+          <sup>1</sup>University of California San Diego &nbsp;·&nbsp; <sup>2</sup>Technical University of Darmstadt
+          &nbsp;·&nbsp; <sup>3</sup>hessian.AI, DFKI &amp; RIG<br />
+          <span class="muted">* Equal contribution. Corresponding: dil012@ucsd.edu</span>
+        </p>
+        <ul class="links">
+          <li><a href="_IROS_2026__Embodiment_Adaptation.pdf">Paper</a></li>
+          <li><a href="oea-presentation_v5.pdf">Slides</a></li>
+        </ul>
+        <nav class="section-nav" aria-label="Page sections">
+          <a href="#overview">Overview</a>
+          <a href="#motivation">Problem</a>
+          <a href="#method">Method</a>
+          <a href="#simulation">Simulation</a>
+          <a href="#real-world">Real world</a>
+          <a href="#online-change">Online change</a>
+          <a href="#outdoor">Outdoor</a>
+          <a href="#takeaways">Takeaways</a>
+          <a href="#bibtex">BibTeX</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="content" id="overview">
+        <div class="wrap">
+          <p class="tagline">Adapt fast when the robot’s body is unknown or changes at deployment.</p>
+          <div class="tldr">
+            <strong>TL;DR:</strong> We combine a <strong>cross-embodiment locomotion policy</strong> with a lightweight
+            <strong>online adaptation module</strong> that infers embodiment parameters from short interaction history
+            (≈0.5&nbsp;s). In simulation and on a Unitree Go2, the adapted policy matches an oracle under uncertainty and
+            stays stable under severe changes (e.g., locked leg, added payload) where a non-adaptive base policy fails.
+          </div>
+          <h2>Abstract</h2>
+          <p class="abstract">
+            Humans effortlessly adapt their movements as their bodies change due to aging, injury, or the use of tools,
+            yet most learning-based robot controllers struggle when their hardware properties change. While recent work
+            trains cross-embodiment policies through large-scale embodiment randomization, these methods typically assume
+            the embodiment at deployment is known. In this work, we propose an online embodiment adaptation framework
+            for quadrupedal locomotion that explicitly infers embodiment parameters from interaction histories and
+            conditions control on the inferred embodiment. Our approach combines a generalist embodiment-aware policy
+            trained under extensive randomization with a lightweight adaptation module that identifies embodiment
+            properties from online interactions within half a second. In simulation, our approach accurately estimates
+            joint limit and payload mass changes, and outperforms an implicit end-to-end baseline. On the real-world
+            Unitree Go2 robot, our system enables stable locomotion under severe embodiment uncertainty, including a fully
+            locked leg or payload addition of 5&nbsp;kg, where policies without adaptation fail. These results demonstrate
+            that explicit online embodiment adaptation can bridge the gap between cross-embodiment training and robust
+            real-world deployment under embodiment uncertainty.
+          </p>
+        </div>
+      </section>
+
+      <section class="content" id="motivation">
+        <div class="wrap">
+          <h2>Unknown Embodiment at Deployment</h2>
+          <p class="lead">
+            Cross-embodiment policies are often trained with diverse bodies, but deployment may involve
+            <strong>unknown or changing</strong> embodiment: joint locking, added payload, motor degradation, missing
+            parts, and more. The central question is how to deploy a single policy when the true embodiment is uncertain.
+          </p>
+          <ul class="problem-list">
+            <li>Joint locking or reduced range of motion</li>
+            <li>Payload addition or mass distribution change</li>
+            <li>Motor failure or strength mismatch</li>
+            <li>Missing or altered mechanical components</li>
+          </ul>
+          <div class="figure-block" style="margin-top: 1.75rem">
+            <p class="figure-title">Deployment setting</p>
+            <img
+              class="img-hero"
+              src="figures/background.jpg"
+              width="1600"
+              height="900"
+              alt="Quadruped robot in an outdoor environment illustrating deployment under embodiment uncertainty"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="method">
+        <div class="wrap">
+          <h2>Online Embodiment Adaptation Pipeline</h2>
+          <p class="lead">
+            A <strong>base policy</strong> is trained across randomized embodiments with access to ground-truth
+            embodiment descriptors. An <strong>adaptation module</strong> then predicts either explicit physical
+            parameters (explicit adaptation) or latent embodiment codes (latent adaptation) from a short history of
+            proprioception and actions. At deployment, only the adaptation path is used to condition the same base policy.
+          </p>
+          <div class="figure-block">
+            <p class="figure-title">System diagram</p>
+            <object
+              class="pdf-frame"
+              data="figures/pipeline_diagram.pdf"
+              type="application/pdf"
+              aria-label="Pipeline diagram PDF"
+            >
+              <p class="pdf-fallback"><a href="figures/pipeline_diagram.pdf">Download pipeline diagram (PDF)</a></p>
+            </object>
+            <p class="caption">Embodiment identification + embodiment-conditioned policy for quadrupedal locomotion.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="simulation">
+        <div class="wrap">
+          <h2>Simulation Performance</h2>
+          <p class="lead">
+            The adapted policy tracks an <strong>oracle</strong> policy that receives ground-truth embodiment
+            descriptors. Below: comparison in simulation and ablations over joint limits, mass, window length, embodiment
+            sweeps, and explicit vs. latent adaptation.
+          </p>
+          <div class="figure-block">
+            <p class="figure-title">Simulation comparison</p>
+            <div class="video-wrap">
+              <video controls playsinline preload="metadata">
+                <source src="figures/static_comparison.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <p class="caption">Adapted performance aligns with the oracle under embodiment variation.</p>
+          </div>
+          <div class="grid-2">
+            <div class="pdf-card">
+              <p class="figure-title">Joint limit &amp; mass (simulation)</p>
+              <object
+                class="pdf-frame"
+                data="figures/q1_joint_limit_mass_step_simulation.pdf"
+                type="application/pdf"
+                aria-label="Joint limit and mass step simulation PDF"
+              >
+                <p class="pdf-fallback"><a href="figures/q1_joint_limit_mass_step_simulation.pdf">Open PDF</a></p>
+              </object>
+            </div>
+            <div class="pdf-card">
+              <p class="figure-title">Window length ablation</p>
+              <object
+                class="pdf-frame"
+                data="figures/q1_window_length_ablation.pdf"
+                type="application/pdf"
+                aria-label="Window length ablation PDF"
+              >
+                <p class="pdf-fallback"><a href="figures/q1_window_length_ablation.pdf">Open PDF</a></p>
+              </object>
+            </div>
+            <div class="pdf-card">
+              <p class="figure-title">Embodiment variation sweep</p>
+              <object
+                class="pdf-frame"
+                data="figures/q2_embodiment_variation_sweep_simulation.pdf"
+                type="application/pdf"
+                aria-label="Embodiment variation sweep PDF"
+              >
+                <p class="pdf-fallback"><a href="figures/q2_embodiment_variation_sweep_simulation.pdf">Open PDF</a></p>
+              </object>
+            </div>
+            <div class="pdf-card">
+              <p class="figure-title">Explicit vs. latent adaptation</p>
+              <object
+                class="pdf-frame"
+                data="figures/q2_explicit_implicit_relative.pdf"
+                type="application/pdf"
+                aria-label="Explicit vs latent adaptation PDF"
+              >
+                <p class="pdf-fallback"><a href="figures/q2_explicit_implicit_relative.pdf">Open PDF</a></p>
+              </object>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="real-world">
+        <div class="wrap">
+          <h2>Real-World Performance</h2>
+          <p class="lead">
+            On Unitree Go2 we evaluate front-right joint locking and trunk payload under <strong>static</strong>
+            embodiment uncertainty at episode start. Explicit adaptation improves success, time-to-failure, distance, and
+            heading stability vs. the base policy.
+          </p>
+          <div class="figure-block">
+            <p class="figure-title">Four-case gait comparison (static uncertainty)</p>
+            <object
+              class="pdf-frame"
+              data="figures/q3_realworld_4_cases_static_gait.pdf"
+              type="application/pdf"
+              aria-label="Real world four cases static gait PDF"
+              style="min-height: 640px"
+            >
+              <p class="pdf-fallback">
+                <a href="figures/q3_realworld_4_cases_static_gait.pdf">Download figure (PDF)</a> — large file; may load
+                slowly in-browser.
+              </p>
+            </object>
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="online-change">
+        <div class="wrap">
+          <h2>Online Embodiment Change</h2>
+          <p class="lead">
+            When embodiment changes <strong>mid-episode</strong> (e.g., joint range suddenly reduced or payload added),
+            the adaptation module updates within roughly half a second; the policy then switches to a gait consistent
+            with the new body.
+          </p>
+          <div class="figure-block">
+            <p class="figure-title">Combined step adaptation (representative trials)</p>
+            <object
+              class="pdf-frame"
+              data="figures/q3_realworld_combined_step_adaptation_final.pdf"
+              type="application/pdf"
+              aria-label="Combined step adaptation PDF"
+            >
+              <p class="pdf-fallback"><a href="figures/q3_realworld_combined_step_adaptation_final.pdf">Open PDF</a></p>
+            </object>
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="outdoor">
+        <div class="wrap">
+          <h2>Outdoor Experiments</h2>
+          <p class="lead">
+            Qualitative locomotion and analysis in outdoor settings using the full pipeline (high-resolution video).
+          </p>
+          <div class="figure-block">
+            <div class="video-wrap">
+              <video controls playsinline preload="metadata">
+                <source src="figures/robot_and_plot_v3.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <p class="caption">Outdoor / real-world visualization and plots.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="content" id="takeaways">
+        <div class="wrap">
+          <h2>Key Observations</h2>
+          <ul class="obs-list">
+            <li>
+              Short-horizon histories suffice for fast embodiment identification, enabling adaptation within ≈0.5&nbsp;s.
+            </li>
+            <li>Explicit and latent adaptation both improve over a non-adaptive base under embodiment drift and noise.</li>
+            <li>
+              Real-world trials show large margins over the base policy under joint lock and payload, including abrupt
+              online changes.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="content" id="bibtex">
+        <div class="wrap">
+          <div class="bib-header">
+            <h2>BibTeX</h2>
+            <button type="button" class="copy-bib" id="copy-bib" aria-label="Copy BibTeX to clipboard">
+              Copy
+            </button>
+          </div>
+          <pre class="bib" id="bibtex-content">@inproceedings{li2026online,
+  title={Online Embodiment Adaptation for Quadrupedal Locomotion},
+  author={Li, Dichen and Ai, Bo and Bohlinger, Nico and Peters, Jan and Christensen, Henrik I. and Su, Hao},
+  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  year={2026}
+}</pre>
+          <p class="muted" style="margin-top: 0.75rem">
+            Update the BibTeX entry with the official IEEE metadata once available.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer-note">
+      <div class="wrap">
+        Page layout inspired by
+        <a href="https://embodiment-scaling-laws.github.io/">Towards Embodiment Scaling Laws in Robot Locomotion</a>.
+      </div>
+    </footer>
+    <script>
+      (function () {
+        var btn = document.getElementById("copy-bib");
+        var pre = document.getElementById("bibtex-content");
+        if (!btn || !pre) return;
+        btn.addEventListener("click", function () {
+          var text = pre.textContent || "";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+              function () {
+                var t = btn.textContent;
+                btn.textContent = "Copied";
+                btn.disabled = true;
+                setTimeout(function () {
+                  btn.textContent = t;
+                  btn.disabled = false;
+                }, 1600);
+              },
+              function () {
+                fallbackCopy(text);
+              }
+            );
+          } else {
+            fallbackCopy(text);
+          }
+        });
+        function fallbackCopy(text) {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+            btn.textContent = "Copied";
+          } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      })();
+    </script>
+  </body>
+</html>
