@@ -14,7 +14,8 @@ Online Embodiment Adaptation for Quadrupedal Locomotion
 
 ### Main title
 
-Online Embodiment Adaptation for Quadrupedal Locomotion
+Online Embodiment Adaptation for  
+Quadrupedal Locomotion
 
 ### Authors
 
