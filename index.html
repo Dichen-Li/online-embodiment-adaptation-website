@@ -6,22 +6,18 @@
     <title>Online Embodiment Adaptation for Quadrupedal Locomotion</title>
     <meta
       name="description"
-      content="Online embodiment adaptation for quadrupedal locomotion: infer embodiment from interaction and condition a cross-embodiment policy."
+      content="Online adaptation with a cross-embodiment policy and adaptation module; matches an oracle on Unitree Go2 in sim and the real world."
     />
     <meta property="og:title" content="Online Embodiment Adaptation for Quadrupedal Locomotion" />
     <meta
       property="og:description"
-      content="Online adaptation module + cross-embodiment quadruped policy. Fast embodiment inference (~0.5s), sim-to-real on Unitree Go2."
+      content="Online adaptation system: cross-embodiment policy and adaptation module. Fast inference (~0.5s), sim and real Unitree Go2."
     />
     <meta property="og:type" content="website" />
     <!-- When publishing, set og:url and og:image to absolute URLs, e.g. https://YOUR_USER.github.io/YOUR_REPO/ -->
     <meta property="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Optional: Adobe Fonts (Graphik). If you use a kit, remove local @font-face in styles.css when the kit loads Graphik. -->
+    <!-- <link rel="stylesheet" href="https://use.typekit.net/PROJECT_ID.css" /> -->
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -32,6 +28,7 @@
           Dichen Li<sup>1*</sup>, Bo Ai<sup>1*</sup>, Nico Bohlinger<sup>2</sup>, Jan Peters<sup>2,3</sup>,
           Henrik I. Christensen<sup>1</sup>, Hao Su<sup>1</sup>
         </p>
+        <p class="affil">* Equal contribution. Corresponding: dil012@ucsd.edu</p>
         <div class="institution-logos">
           <img
             src="figures/Institution.png"
@@ -41,18 +38,12 @@
             decoding="async"
           />
         </div>
-        <p class="affil">
-          <sup>1</sup>University of California San Diego &nbsp;·&nbsp; <sup>2</sup>Technical University of Darmstadt
-          &nbsp;·&nbsp; <sup>3</sup>hessian.AI, DFKI &amp; RIG<br />
-          <span class="muted">* Equal contribution. Corresponding: dil012@ucsd.edu</span>
-        </p>
         <nav class="section-nav" aria-label="Page sections">
           <a href="#overview">Overview</a>
           <a href="#motivation">Problem</a>
           <a href="#method">Method</a>
-          <a href="#simulation">Simulation</a>
-          <a href="#real-world">Real world</a>
-          <a href="#online-change">Online change</a>
+          <a href="#simulation">Simulation Performance</a>
+          <a href="#real-world">Real-World Performance</a>
           <a href="#takeaways">Takeaways</a>
           <a href="#bibtex">BibTeX</a>
         </nav>
@@ -62,12 +53,13 @@
     <main>
       <section class="content" id="overview">
         <div class="wrap">
-          <p class="tagline">Adapt fast when the robot’s body is unknown or changes at deployment.</p>
-          <div class="tldr">
-            <strong>TL;DR:</strong> We combine a <strong>cross-embodiment locomotion policy</strong> with a lightweight
-            <strong>online adaptation module</strong> that infers embodiment parameters from short interaction history
-            (≈0.5&nbsp;s). In simulation and on a Unitree Go2, the adapted policy matches an oracle under uncertainty and
-            stays stable under severe changes (e.g., locked leg, added payload) where a non-adaptive base policy fails.
+          <div class="callout">
+            <strong>TL;DR:</strong> We develop an online adaptation system that includes a
+            <strong>cross-embodiment locomotion policy</strong> and a lightweight <strong>online adaptation module</strong>.
+            The <strong>adaptation module</strong> accurately infers embodiment parameters from short interaction histories
+            (≈0.5&nbsp;s). On a Unitree Go2, in both simulation and the real world, our policy with adaptation matches an
+            oracle policy under severe embodiment uncertainty and changes (e.g., locked leg, added payload), where a base
+            policy without adaptation fails.
           </div>
           <h2>Abstract</h2>
           <p class="abstract">
@@ -90,7 +82,7 @@
 
       <section class="content" id="motivation">
         <div class="wrap">
-          <h2>Unknown Embodiment at Deployment</h2>
+          <h2>Problem</h2>
           <p class="lead">
             A <strong>cross-embodiment</strong> policy can be trained over many robot bodies, yet the
             <strong>true embodiment</strong> at test time may be unknown or may change: joint locking, payload addition,
@@ -112,15 +104,15 @@
 
       <section class="content" id="method">
         <div class="wrap">
-          <h2>Online Embodiment Adaptation Pipeline</h2>
+          <h2>Method</h2>
           <p class="lead">
             A <strong>base policy</strong> is trained across randomized embodiments with access to ground-truth
-            embodiment descriptors. An <strong>adaptation module</strong> then predicts either explicit physical
-            parameters (explicit adaptation) or latent embodiment codes (latent adaptation) from a short history of
-            proprioception and actions. At deployment, only the adaptation path is used to condition the same base policy.
+            embodiment descriptors. We then train an <strong>adaptation module</strong> to infer embodiment parameters
+            from a short interaction history so the <strong>base policy</strong> can condition on them. The module follows
+            two pathways: it predicts either explicit physical parameters (<strong>explicit adaptation</strong>) or latent
+            embodiment representations (<strong>latent adaptation</strong>).
           </p>
           <div class="figure-block">
-            <p class="figure-title">System diagram</p>
             <img
               class="img-figure"
               src="figures/pipeline_diagram.png"
@@ -130,9 +122,6 @@
               loading="lazy"
               decoding="async"
             />
-            <p class="caption">
-              Embodiment identification + embodiment-conditioned policy for quadrupedal locomotion.
-            </p>
           </div>
         </div>
       </section>
@@ -141,17 +130,13 @@
         <div class="wrap">
           <h2>Simulation Performance</h2>
           <p class="lead">
-            The adapted policy tracks an <strong>oracle</strong> policy that receives ground-truth embodiment
-            descriptors. Below: embodiment sweeps and explicit vs. latent adaptation.
+            Below we plot mean episode return and episode length versus joint limit scaling and trunk mass offset for
+            different policies. The oracle and base policies mark the performance bounds. Policies with adaptation—both
+            explicit and latent adaptation—match the oracle policy (which receives ground-truth embodiment descriptions)
+            and largely outperform the base policy (which does not).
           </p>
           <div class="sweep-pair">
             <div class="figure-block">
-              <p class="figure-title">Embodiment variation sweep</p>
-              <p class="figure-expl">
-                Joint limits and trunk mass are swept away from the nominal Go2 setup. The base policy drops sharply;
-                the oracle (ground-truth embodiment) marks the best case. Explicit and latent adaptation stay close to
-                oracle performance across the sweep.
-              </p>
               <img
                 class="img-figure"
                 src="figures/q2_embodiment_variation_sweep_simulation.png"
@@ -163,19 +148,13 @@
               />
             </div>
             <div class="figure-block">
-              <p class="figure-title">Explicit vs. latent adaptation</p>
-              <p class="figure-expl">
-                Normalized return relative to the base and oracle policies on the same joint-limit and trunk-mass
-                sweeps. Explicit and latent adaptation both close most of the gap to the oracle; the implicit
-                end-to-end baseline lags behind.
-              </p>
               <div class="sweep-img--half">
                 <img
                   class="img-figure"
                   src="figures/q2_explicit_implicit_relative.png"
                   width="1959"
                   height="820"
-                  alt="S_rel comparison: explicit vs latent adaptation across sweeps"
+                  alt="Explicit vs latent adaptation across sweeps"
                   loading="lazy"
                   decoding="async"
                 />
@@ -188,13 +167,18 @@
       <section class="content" id="real-world">
         <div class="wrap">
           <h2>Real-World Performance</h2>
+          <h3 class="section-subtitle" id="experiment-1">Experiment 1</h3>
           <p class="lead">
-            On Unitree Go2 we evaluate front-right joint locking and trunk payload under <strong>static</strong>
-            embodiment uncertainty at episode start. Explicit adaptation improves success, time-to-failure, distance, and
-            heading stability vs. the base policy.
+            On Unitree Go2, we compare policies with and without explicit adaptation under two conditions: (1)
+            front-right leg joint locking scaled to 0.3, and (2) a 5.0&nbsp;kg trunk payload. These embodiment
+            uncertainties are introduced at the start of the episode. We form the following four experiments:
+            <strong>(a)</strong> With adaptation under joint limit modification. <strong>(b)</strong> Without adaptation
+            under joint limit modification. <strong>(c)</strong> With adaptation under payload mass addition.
+            <strong>(d)</strong> Without adaptation under payload mass addition. Our explicit adaptation policy enables
+            walking with one leg locked or carrying a heavy load; the base policy fails catastrophically in these settings.
           </p>
+          <p class="lead follow-text">Below: image streams and video.</p>
           <div class="figure-block">
-            <p class="figure-title">Four-case gait comparison (picture)</p>
             <img
               class="img-figure"
               src="figures/q3_realworld_4_cases_static_gait.png"
@@ -204,45 +188,24 @@
               loading="lazy"
               decoding="async"
             />
-            <div class="figure-panels">
-              <p class="figure-expl">
-                Qualitative gait comparison between Explicit Adaptation and Base Policy under joint-limit modification and
-                payload addition. The front-right leg joint limits are locked to 0.3 or 5.0&nbsp;kg payload is added to the
-                trunk. Explicit Adaptation enables walking with one leg locked or carrying heavy load; the Base Policy
-                fails catastrophically in these settings.
-              </p>
-              <ul class="panel-list">
-                <li><strong>(a)</strong> Explicit Adaptation under joint limit modification.</li>
-                <li><strong>(b)</strong> Base Policy under joint limit modification.</li>
-                <li><strong>(c)</strong> Explicit Adaptation under payload mass addition.</li>
-                <li><strong>(d)</strong> Base Policy under payload mass addition.</li>
-              </ul>
-            </div>
           </div>
           <div class="figure-block">
-            <p class="figure-title">Four-case gait comparison (video)</p>
             <div class="video-wrap">
               <video controls playsinline preload="metadata">
                 <source src="figures/static_comparison.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
             </div>
-            <p class="caption">Same four cases as above: (A)–(D) as in Fig.&nbsp;6 of the paper.</p>
           </div>
-        </div>
-      </section>
 
-      <section class="content" id="online-change">
-        <div class="wrap">
-          <h2>Online Embodiment Change</h2>
+          <h3 class="section-subtitle" id="online-change">Experiment 2</h3>
           <p class="lead">
             When embodiment changes <strong>mid-episode</strong> (e.g., joint range suddenly reduced or payload added),
-            the adaptation module updates within roughly half a second; the policy then switches to a gait consistent
-            with the new body. Below: <strong>representative frame sequences</strong> from selected trials, followed by a
-            <strong>high-resolution qualitative video</strong> in outdoor settings.
+            the adaptation module updates within roughly half a second; the policy then switches to a gait consistent with
+            the new body. Below: <strong>representative frame sequences</strong> from selected trials, followed by a
+            <strong>high-resolution qualitative video</strong>.
           </p>
           <div class="figure-block">
-            <p class="figure-title">Representative frames</p>
             <img
               class="img-figure"
               src="figures/q3_realworld_combined_step_adaptation_final.png"
@@ -254,31 +217,31 @@
             />
           </div>
           <div class="figure-block">
-            <p class="figure-title">Qualitative video</p>
             <div class="video-wrap">
               <video controls playsinline preload="metadata">
                 <source src="figures/robot_and_plot_v3.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
             </div>
-            
           </div>
         </div>
       </section>
 
       <section class="content" id="takeaways">
         <div class="wrap">
-          <h2>Key Observations</h2>
-          <ul class="obs-list">
-            <li>
-              Short-horizon histories suffice for fast embodiment identification, enabling adaptation within ≈0.5&nbsp;s.
-            </li>
-            <li>Explicit and latent adaptation both improve over a non-adaptive base under embodiment drift and noise.</li>
-            <li>
-              Real-world trials show large margins over the base policy under joint lock and payload, including abrupt
-              online changes.
-            </li>
-          </ul>
+          <h2>Takeaways</h2>
+          <div class="callout">
+            <ul class="obs-list">
+              <li>
+                Short-horizon histories suffice for fast embodiment identification, enabling adaptation within ≈0.5&nbsp;s.
+              </li>
+              <li>Explicit and latent adaptation both improve over a non-adaptive base under embodiment drift and noise.</li>
+              <li>
+                Real-world experiments show large advantages of online adaptation over the base policy under joint locking
+                and payload perturbations.
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
